@@ -34,4 +34,21 @@ public class TaiKhoanService {
         tk.setHoTen(hoTen);
         return dao.addUser(tk);
     }
+
+    public java.util.List<TaiKhoan> findAll() { return dao.findAll(); }
+
+    public boolean delete(int id) { return dao.delete(id); }
+
+    /**
+     * Nếu username dạng kh{id} -> trả về id khách hàng, ngược lại -1.
+     */
+    public int parseKhachHangIdFromUsername(String username) {
+        if (username == null) return -1;
+        if (username.startsWith("kh")) {
+            try {
+                return Integer.parseInt(username.substring(2));
+            } catch (NumberFormatException ignore) { }
+        }
+        return -1;
+    }
 }

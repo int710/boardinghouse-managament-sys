@@ -3,7 +3,7 @@ package com.ptpmud.quanlynhatro.service;
 import com.ptpmud.quanlynhatro.dao.HopDongDAO;
 import com.ptpmud.quanlynhatro.dao.KhachHangDAO;
 import com.ptpmud.quanlynhatro.dao.PhongDAO;
-import com.ptpmud.quanlynhatro.model.HopDongThue;
+import com.ptpmud.quanlynhatro.model.HopDong;
 import com.ptpmud.quanlynhatro.model.KhachHang;
 import com.ptpmud.quanlynhatro.model.Phong;
 
@@ -37,7 +37,7 @@ public class PhongService {
         if ("dangThue".equalsIgnoreCase(p.getTrangThai())) return new AssignResult(false, "Phòng đã đang thuê");
 
         // 2) insert HopDongThue
-        HopDongThue hd = new HopDongThue();
+        HopDong hd = new HopDong();
         hd.setIdPhong(idPhong);
         hd.setIdKhachHang(idKhachHang);
         hd.setNgayBatDau(Date.valueOf(ngayBatDau));
@@ -97,7 +97,7 @@ public class PhongService {
 
     // return KhachHang + HopDong active for a given phong
     public TenantInfo getTenantInfoByPhong(int idPhong) {
-        HopDongThue hd = hdDAO.findActiveByPhong(idPhong);
+        HopDong hd = hdDAO.findActiveByPhong(idPhong);
         if (hd == null) return null;
         KhachHang kh = khDAO.findById(hd.getIdKhachHang());
         return new TenantInfo(kh, hd);
@@ -105,7 +105,7 @@ public class PhongService {
 
     public static class TenantInfo {
         public final KhachHang khachHang;
-        public final HopDongThue hopDong;
-        public TenantInfo(KhachHang k, HopDongThue h) { this.khachHang = k; this.hopDong = h; }
+        public final HopDong hopDong;
+        public TenantInfo(KhachHang k, HopDong h) { this.khachHang = k; this.hopDong = h; }
     }
 }

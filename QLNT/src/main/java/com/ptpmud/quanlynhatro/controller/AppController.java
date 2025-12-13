@@ -45,6 +45,9 @@ public class AppController {
         if (role.equalsIgnoreCase("admin")) {
             AdminFrame adminUI = new AdminFrame(tk);
             adminUI.setVisible(true);
+        } else {
+            // Người thuê: mở màn hình xem hóa đơn
+            new com.ptpmud.quanlynhatro.view.UserHoaDonFrame(tk).setVisible(true);
         }
     }
 

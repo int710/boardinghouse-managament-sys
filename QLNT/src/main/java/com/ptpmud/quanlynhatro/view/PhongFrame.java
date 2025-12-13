@@ -11,9 +11,11 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.text.NumberFormat;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
@@ -65,6 +67,7 @@ public class PhongFrame extends javax.swing.JPanel {
             cbFilter.setSelectedIndex(0);
             loadData();
         });
+        btnGanKhach.addActionListener(e -> showAssignDialog());
     }
     
     public void loadData() {
@@ -255,6 +258,95 @@ public class PhongFrame extends javax.swing.JPanel {
         }
     }
     
+     private void showAssignDialog() {
+        int sel = table.getSelectedRow();
+        if (sel < 0) { JOptionPane.showMessageDialog(this, "Chọn phòng để gán khách."); return; }
+        int idPhong = (int) tableModel.getValueAt(sel, 0);
+        String status = (String) tableModel.getValueAt(sel, 5);
+        if ("baoTri".equalsIgnoreCase(status)) { JOptionPane.showMessageDialog(this, "Phòng đang bảo trì, không thể gán khách."); return; }
+        if ("dangThue".equalsIgnoreCase(status)) { JOptionPane.showMessageDialog(this, "Phòng đã đang thuê."); return; }
+
+        // Build dialog fields
+        JPanel panel = new JPanel(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+        c.insets = new Insets(6,6,6,6);
+        c.anchor = GridBagConstraints.WEST;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.gridx=0; c.gridy=0;
+        panel.add(new JLabel("ID Phòng:"), c);
+        c.gridx=1; panel.add(new JLabel(String.valueOf(idPhong)), c);
+
+        c.gridx=0; c.gridy++; panel.add(new JLabel("ID Khách (existing):"), c);
+        JTextField txtKhId = new JTextField(); txtKhId.setToolTipText("Nhập ID KhachHang (hoặc để trống để tạo mới)"); c.gridx=1; panel.add(txtKhId, c);
+
+        c.gridx=0; c.gridy++; panel.add(new JLabel("Ngày bắt đầu (YYYY-MM-DD):"), c);
+        JTextField txtNgayBD = new JTextField(LocalDate.now().toString()); c.gridx=1; panel.add(txtNgayBD, c);
+
+        c.gridx=0; c.gridy++; panel.add(new JLabel("Ngày kết thúc (opt):"), c);
+        JTextField txtNgayKT = new JTextField(); c.gridx=1; panel.add(txtNgayKT, c);
+
+        c.gridx=0; c.gridy++; panel.add(new JLabel("Tiền cọc:"), c);
+        JTextField txtCoc = new JTextField("0"); c.gridx=1; panel.add(txtCoc, c);
+
+        c.gridx=0; c.gridy++; panel.add(new JLabel("Tạo tài khoản cho khách?"), c);
+        JCheckBox cbCreateAccount = new JCheckBox(); c.gridx=1; panel.add(cbCreateAccount, c);
+
+        int r = JOptionPane.showConfirmDialog(this, panel, "Gán khách vào phòng", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (r != JOptionPane.OK_OPTION) return;
+
+        try {
+            Integer idKh = null;
+            String sKh = txtKhId.getText().trim();
+            if (!sKh.isEmpty()) idKh = Integer.parseInt(sKh);
+            LocalDate bd = LocalDate.parse(txtNgayBD.getText().trim());
+            LocalDate kt = null;
+            if (!txtNgayKT.getText().trim().isEmpty()) kt = LocalDate.parse(txtNgayKT.getText().trim());
+            double coc = Double.parseDouble(txtCoc.getText().trim());
+            // Call controller assign
+            PhongService.AssignResult res = controller.assignTenantToPhong(idPhong, idKh != null ? idKh : promptCreateKhach(), bd, kt, coc, cbCreateAccount.isSelected());
+            if (res == null) {
+                JOptionPane.showMessageDialog(this, "Lỗi không xác định.");
+            } else if (!res.success) {
+                JOptionPane.showMessageDialog(this, "Lỗi: " + res.message, "Lỗi", JOptionPane.ERROR_MESSAGE);
+            } else {
+                String msg = res.message;
+                if (res.username != null) msg += "\nTài khoản đã tạo: " + res.username + " / mật khẩu: " + res.plainPassword + "\n(đổi mật khẩu ngay khi bàn giao)";
+                JOptionPane.showMessageDialog(this, msg);
+                loadData();
+            }
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Dữ liệu nhập không hợp lệ: " + ex.getMessage(), "Lỗi", JOptionPane.ERROR_MESSAGE);
+        }
+    }
+
+    private int promptCreateKhach() {
+        JPanel p = new JPanel(new GridBagLayout());
+        GridBagConstraints c = new GridBagConstraints();
+        c.insets = new Insets(6,6,6,6);
+        c.anchor = GridBagConstraints.WEST;
+        c.fill = GridBagConstraints.HORIZONTAL;
+
+        c.gridx=0; c.gridy=0; p.add(new JLabel("Họ tên:"), c);
+        JTextField tName = new JTextField(); c.gridx=1; p.add(tName, c);
+
+        c.gridx=0; c.gridy++; p.add(new JLabel("SĐT:"), c);
+        JTextField tPhone = new JTextField(); c.gridx=1; p.add(tPhone, c);
+
+        c.gridx=0; c.gridy++; p.add(new JLabel("CCCD:"), c);
+        JTextField tCccd = new JTextField(); c.gridx=1; p.add(tCccd, c);
+
+        int r = JOptionPane.showConfirmDialog(this, p, "Tạo Khách hàng mới", JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (r != JOptionPane.OK_OPTION) throw new RuntimeException("Hủy tạo khách");
+        // insert KhachHang minimal via DAO
+        com.ptpmud.quanlynhatro.dao.KhachHangDAO dao = new com.ptpmud.quanlynhatro.dao.KhachHangDAO();
+        com.ptpmud.quanlynhatro.model.KhachHang kh = new com.ptpmud.quanlynhatro.model.KhachHang();
+        kh.setTenKhachHang(tName.getText().trim());
+        kh.setSoDienThoai(tPhone.getText().trim());
+        kh.setSoCccd(tCccd.getText().trim());
+        boolean ok = dao.insert(kh);
+        if (!ok) throw new RuntimeException("Không thể tạo KhachHang mới");
+        return kh.getIdKhachHang();
+    }
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -279,6 +371,7 @@ public class PhongFrame extends javax.swing.JPanel {
         jScrollPane2 = new javax.swing.JScrollPane();
         table = new javax.swing.JTable();
         txtInfo = new javax.swing.JLabel();
+        btnGanKhach = new javax.swing.JButton();
 
         jTable1.setModel(new javax.swing.table.DefaultTableModel(
             new Object [][] {
@@ -393,6 +486,9 @@ public class PhongFrame extends javax.swing.JPanel {
 
         txtInfo.setText("Information");
 
+        btnGanKhach.setIcon(new javax.swing.ImageIcon(getClass().getResource("/images/adduser.png"))); // NOI18N
+        btnGanKhach.setText("Gán khách ");
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(this);
         this.setLayout(layout);
         layout.setHorizontalGroup(
@@ -401,12 +497,14 @@ public class PhongFrame extends javax.swing.JPanel {
             .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
                     .addGroup(layout.createSequentialGroup()
-                        .addGap(0, 0, Short.MAX_VALUE)
-                        .addComponent(txtInfo, javax.swing.GroupLayout.PREFERRED_SIZE, 265, javax.swing.GroupLayout.PREFERRED_SIZE))
-                    .addGroup(layout.createSequentialGroup()
                         .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                        .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(14, 14, 14)
+                        .addComponent(btnGanKhach)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                        .addComponent(txtInfo, javax.swing.GroupLayout.PREFERRED_SIZE, 265, javax.swing.GroupLayout.PREFERRED_SIZE)))
                 .addContainerGap())
         );
         layout.setVerticalGroup(
@@ -417,9 +515,11 @@ public class PhongFrame extends javax.swing.JPanel {
                     .addComponent(jPanel1, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                     .addComponent(jPanel2, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE))
                 .addGap(18, 18, 18)
-                .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 280, Short.MAX_VALUE)
+                .addComponent(jScrollPane2, javax.swing.GroupLayout.DEFAULT_SIZE, 265, Short.MAX_VALUE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(txtInfo)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(txtInfo)
+                    .addComponent(btnGanKhach))
                 .addContainerGap())
         );
     }// </editor-fold>//GEN-END:initComponents
@@ -445,6 +545,7 @@ public class PhongFrame extends javax.swing.JPanel {
     private javax.swing.JButton btnAdd;
     private javax.swing.JButton btnDelete;
     private javax.swing.JButton btnEdit;
+    private javax.swing.JButton btnGanKhach;
     private javax.swing.JButton btnReload;
     private javax.swing.JButton btnSearch;
     private javax.swing.JButton btnView;

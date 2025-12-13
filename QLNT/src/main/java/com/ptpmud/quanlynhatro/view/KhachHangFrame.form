@@ -47,11 +47,11 @@
                       <EmptySpace max="32767" attributes="0"/>
                       <Component id="jPanel1" min="-2" max="-2" attributes="0"/>
                   </Group>
-                  <Group type="102" alignment="1" attributes="0">
+                  <Group type="102" attributes="0">
                       <EmptySpace min="-2" pref="14" max="-2" attributes="0"/>
                       <Component id="btnGanKhach" min="-2" max="-2" attributes="0"/>
                       <EmptySpace max="32767" attributes="0"/>
-                      <Component id="txtInfo" min="-2" pref="265" max="-2" attributes="0"/>
+                      <Component id="labelInfo" min="-2" max="-2" attributes="0"/>
                   </Group>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
@@ -70,7 +70,7 @@
               <Component id="jScrollPane2" pref="265" max="32767" attributes="0"/>
               <EmptySpace max="-2" attributes="0"/>
               <Group type="103" groupAlignment="3" attributes="0">
-                  <Component id="txtInfo" alignment="3" min="-2" max="-2" attributes="0"/>
+                  <Component id="labelInfo" alignment="3" min="-2" max="-2" attributes="0"/>
                   <Component id="btnGanKhach" alignment="3" min="-2" max="-2" attributes="0"/>
               </Group>
               <EmptySpace max="-2" attributes="0"/>
@@ -191,11 +191,10 @@
         <Component class="javax.swing.JComboBox" name="cbFilter">
           <Properties>
             <Property name="model" type="javax.swing.ComboBoxModel" editor="org.netbeans.modules.form.editors2.ComboBoxModelEditor">
-              <StringArray count="4">
+              <StringArray count="3">
                 <StringItem index="0" value="T&#x1ea5;t c&#x1ea3;"/>
-                <StringItem index="1" value="dangThue"/>
-                <StringItem index="2" value="trong"/>
-                <StringItem index="3" value="baoTri"/>
+                <StringItem index="1" value="Nam"/>
+                <StringItem index="2" value="N&#x1eef;"/>
               </StringArray>
             </Property>
             <Property name="toolTipText" type="java.lang.String" value="B&#x1ed9; l&#x1ecd;c"/>
@@ -257,7 +256,7 @@
         </Component>
       </SubComponents>
     </Container>
-    <Component class="javax.swing.JLabel" name="txtInfo">
+    <Component class="javax.swing.JLabel" name="labelInfo">
       <Properties>
         <Property name="text" type="java.lang.String" value="Information"/>
       </Properties>
@@ -267,7 +266,7 @@
         <Property name="icon" type="javax.swing.Icon" editor="org.netbeans.modules.form.editors2.IconEditor">
           <Image iconType="3" name="/images/adduser.png"/>
         </Property>
-        <Property name="text" type="java.lang.String" value="G&#xe1;n kh&#xe1;ch "/>
+        <Property name="text" type="java.lang.String" value="G&#xe1;n ph&#xf2;ng"/>
       </Properties>
     </Component>
   </SubComponents>

@@ -1,4 +1,5 @@
 package com.ptpmud.quanlynhatro.view;
+
 import com.ptpmud.quanlynhatro.model.TaiKhoan;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -10,20 +11,28 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+
 /**
  *
  * @author Bùi Thanh Quân - int710 - CT070242
  */
 public class AdminFrame extends JFrame {
+
     private final TaiKhoan currentUser;
     private final CardLayout cardLayout = new CardLayout();
     private final JPanel cards = new JPanel(cardLayout);
     private JButton activeNavButton = null;
     private final List<JButton> navButtons = new ArrayList<>();
+    private final com.ptpmud.quanlynhatro.service.PhongService phongService = new com.ptpmud.quanlynhatro.service.PhongService();
+    private final com.ptpmud.quanlynhatro.service.HopDongService hopDongService = new com.ptpmud.quanlynhatro.service.HopDongService();
+    private final com.ptpmud.quanlynhatro.service.HoaDonService hoaDonService = new com.ptpmud.quanlynhatro.service.HoaDonService();
+    private final com.ptpmud.quanlynhatro.service.KhachHangService khachHangService = new com.ptpmud.quanlynhatro.service.KhachHangService();
+
     public AdminFrame(TaiKhoan user) {
         this.currentUser = user;
         initUI();
     }
+
     private void initUI() {
         setTitle("Quản lý nhà trọ - Admin");
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -40,11 +49,12 @@ public class AdminFrame extends JFrame {
         cards.setBackground(new Color(244, 246, 249));
         cards.setBorder(new EmptyBorder(16, 16, 16, 16));
         cards.add(new DashboardPanel(), "dashboard");
-        cards.add(new com.ptpmud.quanlynhatro.view.PhongPanel(), "phong");
-        cards.add(new KhachHangPanel(), "khachhang");
-        cards.add(new PhongFrame(), "hopdong");
-        cards.add(new DichVuPanel(), "dichvu");
-        cards.add(new TaiKhoanPanel(), "taikhoan");
+        cards.add(new PhongFrame(), "phong");
+        cards.add(new KhachHangFrame(), "khachhang");
+        cards.add(new HopDongFrame(), "hopdong");
+        cards.add(new HoaDonFrame(), "hoadon");
+        cards.add(new DichVuFrame(), "dichvu");
+        cards.add(new TaiKhoanFrame(), "taikhoan");
         add(cards, BorderLayout.CENTER);
         // activate first nav if exists
         SwingUtilities.invokeLater(() -> {
@@ -53,6 +63,7 @@ public class AdminFrame extends JFrame {
             }
         });
     }
+
     // ----------------------
     //  HEADER Design ở đây
     // ----------------------
@@ -94,6 +105,7 @@ public class AdminFrame extends JFrame {
         header.add(right, BorderLayout.EAST);
         return header;
     }
+
     // ----------------------
     // Phần code menu sidebar
     // ----------------------
@@ -111,25 +123,25 @@ public class AdminFrame extends JFrame {
         btnPanel.setOpaque(false);
         btnPanel.setLayout(new BoxLayout(btnPanel, BoxLayout.Y_AXIS));
         btnPanel.setBorder(new EmptyBorder(12, 6, 12, 6));
-        navButtons.add(makeNavButton("Dashboard", "dashboard", "📈"));
+        navButtons.add(makeNavButton("Dashboard", "dashboard", "/images/dashboard.png"));
         btnPanel.add(navButtons.get(navButtons.size() - 1));
         btnPanel.add(Box.createVerticalStrut(6));
-        navButtons.add(makeNavButton("Quản lý Phòng", "phong", "🔑"));
+        navButtons.add(makeNavButton("Quản lý Phòng", "phong", "/images/home.png"));
         btnPanel.add(navButtons.get(navButtons.size() - 1));
         btnPanel.add(Box.createVerticalStrut(6));
-        navButtons.add(makeNavButton("Khách thuê", "khachhang", "👥"));
+        navButtons.add(makeNavButton("Khách thuê", "khachhang", "/images/usergroup.png"));
         btnPanel.add(navButtons.get(navButtons.size() - 1));
         btnPanel.add(Box.createVerticalStrut(6));
-        navButtons.add(makeNavButton("Hợp đồng", "hopdong", "📝"));
+        navButtons.add(makeNavButton("Hợp đồng", "hopdong", "/images/contract.png"));
         btnPanel.add(navButtons.get(navButtons.size() - 1));
         btnPanel.add(Box.createVerticalStrut(6));
-        navButtons.add(makeNavButton("Hóa đơn", "hoadon", "📄"));
+        navButtons.add(makeNavButton("Hóa đơn", "hoadon", "/images/bill.png"));
         btnPanel.add(navButtons.get(navButtons.size() - 1));
         btnPanel.add(Box.createVerticalStrut(6));
-        navButtons.add(makeNavButton("Dịch vụ", "dichvu", "💡"));
+        navButtons.add(makeNavButton("Dịch vụ", "dichvu", "/images/service.png"));
         btnPanel.add(navButtons.get(navButtons.size() - 1));
         btnPanel.add(Box.createVerticalStrut(6));
-        navButtons.add(makeNavButton("Tài khoản", "taikhoan", "👤"));
+        navButtons.add(makeNavButton("Tài khoản", "taikhoan", "/images/account.png"));
         btnPanel.add(navButtons.get(navButtons.size() - 1));
         sidebar.add(new JScrollPane(btnPanel,
                     JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED,
@@ -144,8 +156,9 @@ public class AdminFrame extends JFrame {
         sidebar.add(footer, BorderLayout.SOUTH);
         return sidebar;
     }
-    private JButton makeNavButton(String text, String cardName, String icon) {
-        JButton btn = new JButton(icon + "  " + text);
+
+    private JButton makeNavButton(String text, String cardName, String iconPath) {
+        JButton btn = new JButton(text);
         btn.setAlignmentX(Component.LEFT_ALIGNMENT);
         btn.putClientProperty("card", cardName);
         btn.setMaximumSize(new Dimension(Integer.MAX_VALUE, 44));
@@ -154,6 +167,11 @@ public class AdminFrame extends JFrame {
         btn.setForeground(new Color(45, 55, 72));
         btn.setBorder(BorderFactory.createEmptyBorder(8, 12, 8, 12));
         btn.setHorizontalAlignment(SwingConstants.LEFT); // Căn lề trái
+
+        // Thêm icon vào button
+        ImageIcon icon = new ImageIcon(getClass().getResource(iconPath));
+        btn.setIcon(icon);
+
         Font defaultFont = new Font("Segoe UI", Font.PLAIN, 17);
         try {
             Font currentFont = btn.getFont();
@@ -172,6 +190,7 @@ public class AdminFrame extends JFrame {
                     btn.setBackground(hoverColor);
                 }
             }
+
             @Override
             public void mouseExited(MouseEvent e) {
                 if (btn != activeNavButton) {
@@ -181,6 +200,7 @@ public class AdminFrame extends JFrame {
         });
         return btn;
     }
+
     private void activateNav(JButton btn) {
         if (activeNavButton != null) {
             activeNavButton.setBackground(new Color(250, 252, 255));
@@ -192,23 +212,30 @@ public class AdminFrame extends JFrame {
         String card = (String) btn.getClientProperty("card");
         cardLayout.show(cards, card);
     }
+
     // ----------------------
     // Panels: Dashboard, Phong, KhachHang, HopDong, DichVu, TaiKhoan
     // ----------------------
     // --- Dashboard ---
     private class DashboardPanel extends JPanel {
+
         private final AnimatedLineChart chart1;
         private final AnimatedPieChart pie;
+
         DashboardPanel() {
             setLayout(new BorderLayout(16, 16));
             setBackground(new Color(244, 246, 249));
             // top cards
             JPanel topCards = new JPanel(new GridLayout(1, 4, 16, 16));
             topCards.setOpaque(false);
-            topCards.add(makeCard("Tổng phòng", "120", new Color(23, 162, 184)));
-            topCards.add(makeCard("Đang thuê", "84", new Color(40, 167, 69)));
-            topCards.add(makeCard("Khách hàng", "92", new Color(255, 193, 7)));
-            topCards.add(makeCard("Doanh thu (tháng)", "₫125,000,000", new Color(26, 115, 232)));
+            int totalPhong = phongService.getAll().size();
+            int phongThue = phongService.countStatus("daThue");
+            int khCount = khachHangService.getAll().size();
+            double revenue = hoaDonService.sumTongTienByMonth(java.time.LocalDate.now().getMonthValue(), java.time.LocalDate.now().getYear());
+            topCards.add(makeCard("Tổng phòng", String.valueOf(totalPhong), new Color(23, 162, 184)));
+            topCards.add(makeCard("Đang thuê", String.valueOf(phongThue), new Color(40, 167, 69)));
+            topCards.add(makeCard("Khách hàng", String.valueOf(khCount), new Color(255, 193, 7)));
+            topCards.add(makeCard("Doanh thu (tháng)", formatMoney(revenue), new Color(26, 115, 232)));
             add(topCards, BorderLayout.NORTH);
             // center charts + right summary
             JPanel center = new JPanel(new BorderLayout(16, 16));
@@ -235,6 +262,7 @@ public class AdminFrame extends JFrame {
             chart1.start();
             pie.start();
         }
+
         private JPanel makeCard(String title, String value, Color color) {
             JPanel c = new JPanel(new BorderLayout());
             c.setBackground(Color.WHITE);
@@ -252,16 +280,19 @@ public class AdminFrame extends JFrame {
             c.add(v, BorderLayout.CENTER);
             return c;
         }
+
         private class SummaryListPanel extends JPanel {
+
             SummaryListPanel() {
                 setLayout(new BoxLayout(this, BoxLayout.Y_AXIS));
                 setOpaque(false);
-                add(makeItem("Văn bản", "9.10 GB", 274, new Color(26, 115, 232)));
+                long hdActive = hopDongService.countByStatus("dangThue");
+                long hdDone = hopDongService.countByStatus("daKetThuc");
+                add(makeItem("HĐ đang thuê", "", (int) hdActive, new Color(26, 115, 232)));
                 add(Box.createVerticalStrut(10));
-                add(makeItem("Video", "12.30 GB", 45, new Color(234, 67, 53)));
-                add(Box.createVerticalStrut(10));
-                add(makeItem("Ảnh", "3.20 GB", 120, new Color(40, 167, 69)));
+                add(makeItem("HĐ đã kết thúc", "", (int) hdDone, new Color(234, 67, 53)));
             }
+
             private JPanel makeItem(String name, String size, int count, Color color) {
                 JPanel p = new JPanel(new BorderLayout(8, 8));
                 p.setBackground(Color.WHITE);
@@ -273,18 +304,26 @@ public class AdminFrame extends JFrame {
                 left.setFont(new Font("Segoe UI", Font.BOLD, 14));
                 left.setForeground(color);
                 p.add(left, BorderLayout.WEST);
-                JLabel right = new JLabel(size + " • " + count + " mục");
+                String suffix = size == null || size.isEmpty() ? "" : (size + " • ");
+                JLabel right = new JLabel(suffix + count + " mục");
                 right.setFont(new Font("Segoe UI", Font.PLAIN, 13));
                 right.setForeground(new Color(90, 90, 90));
                 p.add(right, BorderLayout.EAST);
                 return p;
             }
         }
+
+        private String formatMoney(double v) {
+            return String.format("₫%,.0f", v);
+        }
     }
+
     // --- Phòng Panel (table + actions) ---
     private class PhongPanel extends JPanel {
+
         private final DefaultTableModel model;
         private final JTable table;
+
         PhongPanel() {
             setLayout(new BorderLayout(12, 12));
             setBackground(new Color(244, 246, 249));
@@ -301,20 +340,26 @@ public class AdminFrame extends JFrame {
             JPanel actions = actionPanel((e) -> onAdd(), (e) -> onEdit(), (e) -> onDelete());
             add(actions, BorderLayout.SOUTH);
         }
+
         private void onAdd() {
             // TODO: open dialog to add room and call service (PhongService)
             JOptionPane.showMessageDialog(this, "Add room (tích hợp service ở đây).");
         }
+
         private void onEdit() {
             JOptionPane.showMessageDialog(this, "Edit room");
         }
+
         private void onDelete() {
             JOptionPane.showMessageDialog(this, "Delete room");
         }
     }
+
     // --- KhachHang Panel ---
     private class KhachHangPanel extends JPanel {
+
         private final DefaultTableModel model;
+
         KhachHangPanel() {
             setLayout(new BorderLayout(12, 12));
             setBackground(new Color(244, 246, 249));
@@ -329,19 +374,25 @@ public class AdminFrame extends JFrame {
             add(new JScrollPane(table), BorderLayout.CENTER);
             add(actionPanel((e) -> addKH(), (e) -> editKH(), (e) -> delKH()), BorderLayout.SOUTH);
         }
+
         private void addKH() {
             JOptionPane.showMessageDialog(this, "Thêm khách");
         }
+
         private void editKH() {
             JOptionPane.showMessageDialog(this, "Sửa khách");
         }
+
         private void delKH() {
             JOptionPane.showMessageDialog(this, "Xóa khách");
         }
     }
+
     // --- HopDong Panel ---
     private class HopDongPanel extends JPanel {
+
         private final DefaultTableModel model;
+
         HopDongPanel() {
             setLayout(new BorderLayout(12, 12));
             setBackground(new Color(244, 246, 249));
@@ -355,20 +406,26 @@ public class AdminFrame extends JFrame {
             add(new JScrollPane(table), BorderLayout.CENTER);
             add(actionPanel((e) -> createContract(), (e) -> endContract(), (e) -> printContract()), BorderLayout.SOUTH);
         }
+
         private void createContract() {
             // TODO: implement create contract -> insert HopDongThue -> create user account for tenant (TaiKhoanService.register)
             JOptionPane.showMessageDialog(this, "Tạo hợp đồng -> tự cấp tài khoản user (TODO tích hợp service).");
         }
+
         private void endContract() {
             JOptionPane.showMessageDialog(this, "Kết thúc hợp đồng");
         }
+
         private void printContract() {
             JOptionPane.showMessageDialog(this, "In hợp đồng (PDF)");
         }
     }
+
     // --- DichVu Panel ---
     private class DichVuPanel extends JPanel {
+
         private final DefaultTableModel model;
+
         DichVuPanel() {
             setLayout(new BorderLayout(12, 12));
             setBackground(new Color(244, 246, 249));
@@ -383,19 +440,25 @@ public class AdminFrame extends JFrame {
             add(new JScrollPane(table), BorderLayout.CENTER);
             add(actionPanel((e) -> addDV(), (e) -> editDV(), (e) -> delDV()), BorderLayout.SOUTH);
         }
+
         private void addDV() {
             JOptionPane.showMessageDialog(this, "Thêm dịch vụ");
         }
+
         private void editDV() {
             JOptionPane.showMessageDialog(this, "Sửa dịch vụ");
         }
+
         private void delDV() {
             JOptionPane.showMessageDialog(this, "Xóa dịch vụ");
         }
     }
+
     // --- TaiKhoan Panel ---
     private class TaiKhoanPanel extends JPanel {
+
         private final DefaultTableModel model;
+
         TaiKhoanPanel() {
             setLayout(new BorderLayout(12, 12));
             setBackground(new Color(244, 246, 249));
@@ -414,6 +477,7 @@ public class AdminFrame extends JFrame {
             bottom.add(create);
             add(bottom, BorderLayout.SOUTH);
         }
+
         private void showCreateAccountDialog() {
             JTextField user = new JTextField();
             JPasswordField pass = new JPasswordField();
@@ -433,6 +497,7 @@ public class AdminFrame extends JFrame {
             }
         }
     }
+
     // ----------------------
     // Utility UI pieces
     // ----------------------
@@ -460,6 +525,7 @@ public class AdminFrame extends JFrame {
         p.add(right, BorderLayout.EAST);
         return p;
     }
+
     private void styleTable(JTable t) {
         t.setFont(new Font("Segoe UI", Font.PLAIN, 14));
         t.setRowHeight(36);
@@ -468,6 +534,7 @@ public class AdminFrame extends JFrame {
         t.getTableHeader().setForeground(new Color(40, 40, 40));
         t.setGridColor(new Color(230, 230, 230));
     }
+
     // FIXED: single helper to create placeholder panels
     private JPanel makePlaceholder(String caption, int height) {
         JPanel p = new JPanel(new BorderLayout());
@@ -479,13 +546,16 @@ public class AdminFrame extends JFrame {
         p.add(l, BorderLayout.CENTER);
         return p;
     }
+
     // ----------------------
     // Simple animated line chart (demo) using Graphics2D
     // ----------------------
     private class AnimatedLineChart extends JPanel {
+
         private final int[] data = new int[12];
         private final Timer timer;
         private int step = 0;
+
         AnimatedLineChart() {
             setBackground(Color.WHITE);
             setBorder(BorderFactory.createCompoundBorder(
@@ -506,10 +576,12 @@ public class AdminFrame extends JFrame {
             });
             setPreferredSize(new Dimension(700, 260));
         }
+
         void start() {
             step = 0;
             timer.start();
         }
+
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
@@ -564,14 +636,17 @@ public class AdminFrame extends JFrame {
             }
         }
     }
+
     // ----------------------
     // Simple animated pie chart
     // ----------------------
     private class AnimatedPieChart extends JPanel {
+
         private final double[] values = {0.45, 0.25, 0.18, 0.12};
         private final Color[] colors = {new Color(26, 115, 232), new Color(40, 167, 69), new Color(255, 193, 7), new Color(234, 67, 53)};
         private double progress = 0;
         private Timer timer = null;
+
         AnimatedPieChart() {
             setPreferredSize(new Dimension(300, 200));
             setBackground(Color.WHITE);
@@ -588,10 +663,12 @@ public class AdminFrame extends JFrame {
                 repaint();
             });
         }
+
         void start() {
             progress = 0;
             timer.start();
         }
+
         @Override
         protected void paintComponent(Graphics g) {
             super.paintComponent(g);
@@ -618,6 +695,7 @@ public class AdminFrame extends JFrame {
             g2.drawString("Dung lượng", 10, 18);
         }
     }
+
     // ----------------------
     // main quick-run
     // ----------------------

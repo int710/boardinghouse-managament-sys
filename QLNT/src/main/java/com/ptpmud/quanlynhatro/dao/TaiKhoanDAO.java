@@ -58,4 +58,36 @@ public class TaiKhoanDAO {
         return false;
     }
 
+    public java.util.List<TaiKhoan> findAll() {
+        java.util.List<TaiKhoan> list = new java.util.ArrayList<>();
+        String sql = "SELECT * FROM TaiKhoan ORDER BY idTaiKhoan";
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                TaiKhoan tk = new TaiKhoan();
+                tk.setIdTaiKhoan(rs.getInt("idTaiKhoan"));
+                tk.setTenDangNhap(rs.getString("tenDangNhap"));
+                tk.setMatKhau(rs.getString("matKhau"));
+                tk.setVaiTro(rs.getString("vaiTro"));
+                tk.setHoTen(rs.getString("hoTen"));
+                list.add(tk);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return list;
+    }
+
+    public boolean delete(int id) {
+        String sql = "DELETE FROM TaiKhoan WHERE idTaiKhoan = ?";
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return false;
+    }
+
 }

@@ -1,10 +1,11 @@
--- File: QuanLyNhaTroFull_v2.sql
+-- File: QuanLyNhaTroFull_v3.sql
 -- Mục đích: Tạo đầy đủ Database + Bảng + Indexes + Sample Data + Triggers + Stored Procedures + Event
 -- Chạy trên MySQL 8.x
+-- Phiên bản: v3 - Bỏ dịch vụ cố định, chỉ lưu dịch vụ khi tạo hóa đơn
 
 -- =========================
 -- 0) (TÙY CHỌN) Bật Event Scheduler nếu có quyền SUPER
--- Nếu có quyền SUPER, bỏ comment dòng dưới để bật scheduler.
+-- =========================
 -- SET GLOBAL event_scheduler = ON;
 
 -- =========================
@@ -69,7 +70,7 @@ CREATE TABLE Dien (
     nam INT NOT NULL CHECK (nam >= 2000),
     chiSoCu DOUBLE DEFAULT 0,
     chiSoMoi DOUBLE DEFAULT 0,
-    donGia DOUBLE DEFAULT 3500, -- mặc định
+    donGia DOUBLE DEFAULT 3500,
     thanhTien DOUBLE GENERATED ALWAYS AS ((chiSoMoi - chiSoCu) * donGia) STORED,
     ngayTao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY ukDienPhongThangNam (idPhong, thang, nam),
@@ -82,7 +83,7 @@ CREATE TABLE Nuoc (
     idPhong INT NOT NULL,
     thang TINYINT NOT NULL CHECK (thang BETWEEN 1 AND 12),
     nam INT NOT NULL CHECK (nam >= 2000),
-    soKhoi DOUBLE DEFAULT 0,
+    soKhoi DOUBLE DEFAULT 0,  -- số khối đã dùng trong tháng
     donGia DOUBLE DEFAULT 15000,
     thanhTien DOUBLE GENERATED ALWAYS AS (soKhoi * donGia) STORED,
     ngayTao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -90,7 +91,7 @@ CREATE TABLE Nuoc (
     FOREIGN KEY (idPhong) REFERENCES Phong(idPhong) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
--- Bảng: DichVu (các dịch vụ thêm)
+-- Bảng: DichVu (danh mục dịch vụ)
 CREATE TABLE DichVu (
     idDichVu INT AUTO_INCREMENT PRIMARY KEY,
     tenDichVu VARCHAR(100) NOT NULL,
@@ -98,29 +99,6 @@ CREATE TABLE DichVu (
     moTa TEXT,
     ngayTao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
-
--- Bảng: PhongDichVu (danh sách dịch vụ áp dụng cho phòng)
--- Thêm thang/nam nullable: nếu null => dịch vụ cố định hàng tháng; nếu có thang/nam => áp dụng cho tháng đó
-CREATE TABLE PhongDichVu (
-    idPhongDichVu INT AUTO_INCREMENT PRIMARY KEY,
-    idPhong INT NOT NULL,
-    idDichVu INT NOT NULL,
-    soLuong INT DEFAULT 1,
-    thang TINYINT NULL CHECK (thang BETWEEN 1 AND 12),
-    nam INT NULL CHECK (nam >= 2000),
-    ghiChu TEXT,
-    ngayTao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    UNIQUE KEY uk_phong_dichvu (idPhong, idDichVu, thang, nam),
-
-    FOREIGN KEY (idPhong) REFERENCES Phong(idPhong)
-        ON DELETE CASCADE ON UPDATE CASCADE,
-        
-    FOREIGN KEY (idDichVu) REFERENCES DichVu(idDichVu)
-        ON DELETE CASCADE ON UPDATE CASCADE
-) ENGINE=InnoDB;
-
-
 
 -- Bảng: HoaDon (hóa đơn hàng tháng)
 CREATE TABLE HoaDon (
@@ -132,7 +110,7 @@ CREATE TABLE HoaDon (
     tienDien DOUBLE DEFAULT 0,
     tienNuoc DOUBLE DEFAULT 0,
     tienDichVu DOUBLE DEFAULT 0,
-    tienKhac DOUBLE DEFAULT 0,    -- phụ phí khác
+    tienKhac DOUBLE DEFAULT 0,
     tongTien DOUBLE DEFAULT 0,
     trangThai VARCHAR(20) DEFAULT 'chuaThanhToan',  -- 'chuaThanhToan' / 'daThanhToan'
     ngayTao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -140,17 +118,31 @@ CREATE TABLE HoaDon (
     FOREIGN KEY (idPhong) REFERENCES Phong(idPhong) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB;
 
+-- Bảng: HoaDonDichVu (chi tiết dịch vụ của từng hóa đơn)
+CREATE TABLE HoaDonDichVu (
+    idHoaDonDichVu INT AUTO_INCREMENT PRIMARY KEY,
+    idHoaDon INT NOT NULL,
+    idDichVu INT NOT NULL,
+    soLuong INT DEFAULT 1,
+    donGia DOUBLE NOT NULL,  -- lưu đơn giá tại thời điểm tạo hóa đơn
+    thanhTien DOUBLE GENERATED ALWAYS AS (soLuong * donGia) STORED,
+    ngayTao TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (idHoaDon) REFERENCES HoaDon(idHoaDon) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (idDichVu) REFERENCES DichVu(idDichVu) ON DELETE RESTRICT ON UPDATE CASCADE,
+    INDEX idxHoaDonDichVu_HoaDon (idHoaDon)
+) ENGINE=InnoDB;
+
 -- Bảng: TaiKhoan (đăng nhập)
 CREATE TABLE TaiKhoan (
     idTaiKhoan INT AUTO_INCREMENT PRIMARY KEY,
     tenDangNhap VARCHAR(50) NOT NULL UNIQUE,
     matKhau VARCHAR(255) NOT NULL, -- nên hash (BCrypt) trước khi insert
-    vaiTro VARCHAR(20) DEFAULT 'admin', -- 'admin' / 'nhanVien'
+    vaiTro VARCHAR(20) DEFAULT 'admin', -- 'admin' / 'nhanVien' / 'user'
     hoTen VARCHAR(100),
     ngayTao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
--- Bảng: ThuChi (ghi nhận thu/chi) — đổi ngayNgay -> ngayLap
+-- Bảng: ThuChi (ghi nhận thu/chi)
 CREATE TABLE ThuChi (
     idThuChi INT AUTO_INCREMENT PRIMARY KEY,
     ngayLap DATE NOT NULL,
@@ -169,7 +161,9 @@ CREATE TABLE ThuChi (
 CREATE INDEX idxPhongTrangThai ON Phong(trangThai);
 CREATE INDEX idxHopDongPhong ON HopDongThue(idPhong);
 CREATE INDEX idxHopDongKhachHang ON HopDongThue(idKhachHang);
+CREATE INDEX idxHopDongTrangThai ON HopDongThue(trangThai);
 CREATE INDEX idxHoaDonTrangThai ON HoaDon(trangThai);
+CREATE INDEX idxHoaDonThangNam ON HoaDon(thang, nam);
 
 -- =========================
 -- 4) Dữ liệu mẫu
@@ -189,12 +183,12 @@ INSERT INTO HopDongThue (idPhong, idKhachHang, ngayBatDau, ngayKetThuc, tienCoc,
 VALUES
 (2, 1, '2025-10-01', NULL, 1000000, 'dangThue');
 
-INSERT INTO DichVu (tenDichVu, donGia)
-VALUES ('wifi', 100000), ('giuXe', 50000), ('rac', 20000);
-
--- PhongDichVu: wifi cố định cho P101 (thang/nam NULL => cố định); 
-INSERT INTO PhongDichVu (idPhong, idDichVu, soLuong, thang, nam)
-VALUES (1, 1, 1, NULL, NULL);
+INSERT INTO DichVu (tenDichVu, donGia, moTa)
+VALUES 
+('Wifi', 100000, 'Dịch vụ internet'),
+('Giữ xe', 50000, 'Dịch vụ giữ xe máy'),
+('Rác', 20000, 'Phí thu gom rác'),
+('Vệ sinh', 30000, 'Dịch vụ vệ sinh chung');
 
 -- Dien / Nuoc sample (tháng 10/2025)
 INSERT INTO Dien (idPhong, thang, nam, chiSoCu, chiSoMoi, donGia)
@@ -205,10 +199,12 @@ VALUES (2, 10, 2025, 5, 15000);
 
 -- =========================
 -- 5) Stored Procedure: spTaoHoaDonChoPhong (upsert)
---    cập nhật dịch vụ: bao gồm dịch vụ cố định (thang IS NULL) và dịch vụ gắn theo tháng/năm
+--    Tính từ Dien, Nuoc (KHÔNG tính dịch vụ vì dịch vụ chỉ lưu khi tạo hóa đơn thủ công)
 -- =========================
 DELIMITER $$
+
 DROP PROCEDURE IF EXISTS spTaoHoaDonChoPhong $$
+
 CREATE PROCEDURE spTaoHoaDonChoPhong (
     IN pIdPhong INT,
     IN pThang TINYINT,
@@ -235,13 +231,11 @@ BEGIN
     FROM Nuoc
     WHERE idPhong = pIdPhong AND thang = pThang AND nam = pNam;
 
-    -- Tính tiền dịch vụ cho phòng:
-    -- lấy cả dịch vụ cố định (thang IS NULL) và dịch vụ gắn cho tháng/năm tương ứng
-    SELECT COALESCE(SUM(pdv.soLuong * dv.donGia),0) INTO vTienDichVu
-    FROM PhongDichVu pdv
-    JOIN DichVu dv ON pdv.idDichVu = dv.idDichVu
-    WHERE pdv.idPhong = pIdPhong
-      AND (pdv.thang IS NULL OR (pdv.thang = pThang AND pdv.nam = pNam));
+    -- Tính tiền dịch vụ từ HoaDonDichVu (nếu hóa đơn đã tồn tại)
+    SELECT COALESCE(SUM(thanhTien),0) INTO vTienDichVu
+    FROM HoaDonDichVu hddv
+    JOIN HoaDon hd ON hddv.idHoaDon = hd.idHoaDon
+    WHERE hd.idPhong = pIdPhong AND hd.thang = pThang AND hd.nam = pNam;
 
     -- Tổng
     SET vTong = COALESCE(vTienPhong,0) + COALESCE(vTienDien,0) + COALESCE(vTienNuoc,0) + COALESCE(vTienDichVu,0) + COALESCE(vTienKhac,0);
@@ -254,19 +248,18 @@ BEGIN
             tienNuoc = vTienNuoc,
             tienDichVu = vTienDichVu,
             tienKhac = vTienKhac,
-            tongTien = vTong,
-            ngayTao = NOW()
+            tongTien = vTong
         WHERE idPhong = pIdPhong AND thang = pThang AND nam = pNam;
     ELSE
-        INSERT INTO HoaDon (idPhong, thang, nam, tienPhong, tienDien, tienNuoc, tienDichVu, tienKhac, tongTien, ngayTao)
-        VALUES (pIdPhong, pThang, pNam, vTienPhong, vTienDien, vTienNuoc, vTienDichVu, vTienKhac, vTong, NOW());
+        INSERT INTO HoaDon (idPhong, thang, nam, tienPhong, tienDien, tienNuoc, tienDichVu, tienKhac, tongTien)
+        VALUES (pIdPhong, pThang, pNam, vTienPhong, vTienDien, vTienNuoc, vTienDichVu, vTienKhac, vTong);
     END IF;
 END $$
+
 DELIMITER ;
 
 -- =========================
 -- 6) Triggers
---    - Sử dụng BEFORE/AFTER đúng cách để tránh cập nhật chính bảng đang trigger
 -- =========================
 
 -- Trigger AFTER INSERT Dien
@@ -313,53 +306,71 @@ BEGIN
 END $$
 DELIMITER ;
 
--- Trigger AFTER INSERT PhongDichVu -> recompute hoa_don for relevant month(s)
+-- Trigger AFTER INSERT/UPDATE HoaDonDichVu -> cập nhật tổng tiền dịch vụ trong HoaDon
 DELIMITER $$
-DROP TRIGGER IF EXISTS trgAfterInsertPhongDichVu $$
-CREATE TRIGGER trgAfterInsertPhongDichVu
-AFTER INSERT ON PhongDichVu
+DROP TRIGGER IF EXISTS trgAfterInsertHoaDonDichVu $$
+CREATE TRIGGER trgAfterInsertHoaDonDichVu
+AFTER INSERT ON HoaDonDichVu
 FOR EACH ROW
 BEGIN
-    IF NEW.thang IS NULL OR NEW.nam IS NULL THEN
-        -- dịch vụ cố định: recalc cho current month/year
-        CALL spTaoHoaDonChoPhong(NEW.idPhong, MONTH(CURDATE()), YEAR(CURDATE()));
-    ELSE
-        CALL spTaoHoaDonChoPhong(NEW.idPhong, NEW.thang, NEW.nam);
-    END IF;
+    UPDATE HoaDon hd
+    SET hd.tienDichVu = (
+        SELECT COALESCE(SUM(thanhTien), 0)
+        FROM HoaDonDichVu
+        WHERE idHoaDon = NEW.idHoaDon
+    ),
+    hd.tongTien = hd.tienPhong + hd.tienDien + hd.tienNuoc + (
+        SELECT COALESCE(SUM(thanhTien), 0)
+        FROM HoaDonDichVu
+        WHERE idHoaDon = NEW.idHoaDon
+    ) + hd.tienKhac
+    WHERE hd.idHoaDon = NEW.idHoaDon;
 END $$
 DELIMITER ;
 
--- Trigger AFTER UPDATE PhongDichVu
 DELIMITER $$
-DROP TRIGGER IF EXISTS trgAfterUpdatePhongDichVu $$
-CREATE TRIGGER trgAfterUpdatePhongDichVu
-AFTER UPDATE ON PhongDichVu
+DROP TRIGGER IF EXISTS trgAfterUpdateHoaDonDichVu $$
+CREATE TRIGGER trgAfterUpdateHoaDonDichVu
+AFTER UPDATE ON HoaDonDichVu
 FOR EACH ROW
 BEGIN
-    IF NEW.thang IS NULL OR NEW.nam IS NULL THEN
-        CALL spTaoHoaDonChoPhong(NEW.idPhong, MONTH(CURDATE()), YEAR(CURDATE()));
-    ELSE
-        CALL spTaoHoaDonChoPhong(NEW.idPhong, NEW.thang, NEW.nam);
-    END IF;
+    UPDATE HoaDon hd
+    SET hd.tienDichVu = (
+        SELECT COALESCE(SUM(thanhTien), 0)
+        FROM HoaDonDichVu
+        WHERE idHoaDon = NEW.idHoaDon
+    ),
+    hd.tongTien = hd.tienPhong + hd.tienDien + hd.tienNuoc + (
+        SELECT COALESCE(SUM(thanhTien), 0)
+        FROM HoaDonDichVu
+        WHERE idHoaDon = NEW.idHoaDon
+    ) + hd.tienKhac
+    WHERE hd.idHoaDon = NEW.idHoaDon;
 END $$
 DELIMITER ;
 
--- Trigger AFTER DELETE PhongDichVu
 DELIMITER $$
-DROP TRIGGER IF EXISTS trgAfterDeletePhongDichVu $$
-CREATE TRIGGER trgAfterDeletePhongDichVu
-AFTER DELETE ON PhongDichVu
+DROP TRIGGER IF EXISTS trgAfterDeleteHoaDonDichVu $$
+CREATE TRIGGER trgAfterDeleteHoaDonDichVu
+AFTER DELETE ON HoaDonDichVu
 FOR EACH ROW
 BEGIN
-    IF OLD.thang IS NULL OR OLD.nam IS NULL THEN
-        CALL spTaoHoaDonChoPhong(OLD.idPhong, MONTH(CURDATE()), YEAR(CURDATE()));
-    ELSE
-        CALL spTaoHoaDonChoPhong(OLD.idPhong, OLD.thang, OLD.nam);
-    END IF;
+    UPDATE HoaDon hd
+    SET hd.tienDichVu = (
+        SELECT COALESCE(SUM(thanhTien), 0)
+        FROM HoaDonDichVu
+        WHERE idHoaDon = OLD.idHoaDon
+    ),
+    hd.tongTien = hd.tienPhong + hd.tienDien + hd.tienNuoc + (
+        SELECT COALESCE(SUM(thanhTien), 0)
+        FROM HoaDonDichVu
+        WHERE idHoaDon = OLD.idHoaDon
+    ) + hd.tienKhac
+    WHERE hd.idHoaDon = OLD.idHoaDon;
 END $$
 DELIMITER ;
 
--- Trigger AFTER INSERT HopDongThue -> cập nhật trạng thái phòng (được phép update bảng khác)
+-- Trigger AFTER INSERT HopDongThue -> cập nhật trạng thái phòng
 DELIMITER $$
 DROP TRIGGER IF EXISTS trgAfterInsertHopDong $$
 CREATE TRIGGER trgAfterInsertHopDong
@@ -384,7 +395,7 @@ BEGIN
 END $$
 DELIMITER ;
 
--- Trigger AFTER UPDATE HopDongThue: nếu hop dong đã daKetThuc -> cập nhật Phong
+-- Trigger AFTER UPDATE HopDongThue: nếu hợp đồng đã kết thúc -> cập nhật Phong
 DELIMITER $$
 DROP TRIGGER IF EXISTS trgAfterUpdateHopDong $$
 CREATE TRIGGER trgAfterUpdateHopDong
@@ -400,7 +411,6 @@ DELIMITER ;
 -- =========================
 -- 7) Event: Hàng ngày kiểm tra hợp đồng hết hạn
 -- =========================
--- Nếu event_scheduler ON thì event này sẽ chạy
 DELIMITER $$
 DROP EVENT IF EXISTS evCheckExpiredContracts $$
 CREATE EVENT evCheckExpiredContracts
@@ -408,7 +418,6 @@ ON SCHEDULE EVERY 1 DAY
 STARTS (CURRENT_TIMESTAMP + INTERVAL 1 HOUR)
 DO
 BEGIN
-    -- Cập nhật hợp đồng đã kết thúc trước ngày hôm nay
     UPDATE HopDongThue h
     JOIN Phong p ON p.idPhong = h.idPhong
     SET h.trangThai = 'daKetThuc', p.trangThai = 'trong'
@@ -436,9 +445,10 @@ BEGIN
     SELECT giaThue INTO vTienPhong FROM Phong WHERE idPhong = pIdPhong LIMIT 1;
     SELECT COALESCE(SUM(thanhTien),0) INTO vTienDien FROM Dien WHERE idPhong = pIdPhong AND thang = pThang AND nam = pNam;
     SELECT COALESCE(SUM(thanhTien),0) INTO vTienNuoc FROM Nuoc WHERE idPhong = pIdPhong AND thang = pThang AND nam = pNam;
-    SELECT COALESCE(SUM(pdv.soLuong * dv.donGia),0) INTO vTienDichVu
-    FROM PhongDichVu pdv JOIN DichVu dv ON pdv.idDichVu = dv.idDichVu
-    WHERE pdv.idPhong = pIdPhong AND (pdv.thang IS NULL OR (pdv.thang = pThang AND pdv.nam = pNam));
+    SELECT COALESCE(SUM(hddv.thanhTien),0) INTO vTienDichVu
+    FROM HoaDon hd
+    JOIN HoaDonDichVu hddv ON hd.idHoaDon = hddv.idHoaDon
+    WHERE hd.idPhong = pIdPhong AND hd.thang = pThang AND hd.nam = pNam;
 
     SET vTong = COALESCE(vTienPhong,0) + COALESCE(vTienDien,0) + COALESCE(vTienNuoc,0) + COALESCE(vTienDichVu,0);
     RETURN vTong;
@@ -446,20 +456,13 @@ END $$
 DELIMITER ;
 
 -- =========================
--- 9) Hướng dẫn test nhanh (một số query mẫu)
--- =========================
--- INSERT INTO Dien (idPhong, thang, nam, chiSoCu, chiSoMoi, donGia) VALUES (2,10,2025,1200,1250,3500);
--- CALL spTaoHoaDonChoPhong(2,10,2025);
--- SELECT * FROM HoaDon WHERE idPhong = 2 AND thang = 10 AND nam = 2025;
--- SELECT fnTinhTongHoaDon(2,10,2025);
-
--- =========================
--- 10) Kết thúc file: chèn user mẫu & thu_chi demo
+-- 9) Dữ liệu mẫu tiếp
 -- =========================
 INSERT INTO TaiKhoan (tenDangNhap, matKhau, vaiTro, hoTen)
-VALUES ('admin', 'admin_plaintext_please_change', 'admin', 'Quản trị hệ thống');
-TaiKhoan
+VALUES ('admin', '$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewY5GyYqJZxKxK5u', 'admin', 'Quản trị hệ thống');
+-- Mật khẩu: admin (đã hash bằng BCrypt)
+
 INSERT INTO ThuChi (ngayLap, loai, soTien, nguon, ghiChu, idPhong)
 VALUES (CURDATE(), 'CHI', 500000, 'SuaMayLanh', 'Thay block', 2);
 
--- End of QuanLyNhaTroFull_v2.sql
+-- End of QuanLyNhaTroFull_v3.sql
