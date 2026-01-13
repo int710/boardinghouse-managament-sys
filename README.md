@@ -389,6 +389,7 @@ QLNT/
 ---
 
 ## 🗄️ Database Schema
+![Database diagram](https://i.imgur.com/vsNevcv.png)
 
 ### Entity Relationship Diagram
 
