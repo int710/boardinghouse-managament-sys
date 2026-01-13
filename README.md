@@ -160,7 +160,7 @@ Bạn có thể tải xuống bản cài đặt mới nhất dành cho Windows b
 
 | Phiên bản              | Hệ điều hành  | Link tải xuống                                                                                                            |
 | :--------------------- | :------------ | :------------------------------------------------------------------------------------------------------------------------ |
-| **iNhaTro Pro v1.0.2** | Windows (MSI) | [**Download Now (.msi)**](https://github.com/YOUR_USERNAME/YOUR_REPO_NAME/releases/download/v1.0.2/iNhaTro_Pro-1.0.2.msi) |
+| **iNhaTro Pro v1.0.2** | Windows (MSI) | [**Download Now (.msi)**](https://github.com/int710/boardinghouse-managament-sys/releases/tag/v1.0.2) |
 
 _(Lưu ý: Sau khi cài đặt, nếu Windows báo bảo vệ "Windows Protected your PC", hãy chọn **More info** -> **Run anyway**)_
 
